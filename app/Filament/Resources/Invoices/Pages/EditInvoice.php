@@ -24,7 +24,11 @@ class EditInvoice extends EditRecord
     {
         return [
             ViewAction::make(),
-            ...InvoiceActions::draft(),
+            InvoiceActions::previewPdf(),
+            // Sending freezes the invoice: save the form first so unsaved discount/note edits (already shown in
+            // the live totals) are issued too. A validation error or refused save halts the send.
+            InvoiceActions::markSent()->before(fn () => $this->save(shouldRedirect: false, shouldSendSavedNotification: false)),
+            InvoiceActions::deleteDraft(),
         ];
     }
 

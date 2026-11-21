@@ -195,6 +195,33 @@ test('mark as sent asks for a sent date defaulting to today', function () {
         ->and($invoice->pdf_path)->not->toBeNull();
 });
 
+test('mark as sent saves unsaved discount and note first', function () {
+    $invoice = uiDraftWithLine();
+
+    Livewire::test(EditInvoice::class, ['record' => $invoice->id])
+        ->fillForm(['note' => 'November work', 'discount_type' => 'percent', 'discount_value' => '10'])
+        ->callAction('markSent', data: ['sent_on' => '2026-11-21'])
+        ->assertHasNoActionErrors();
+
+    $invoice->refresh();
+    expect($invoice->status)->toBe(InvoiceStatus::Sent)
+        ->and($invoice->discount_value)->toBe(1000)
+        ->and($invoice->note)->toBe('November work')
+        ->and($invoice->total_cents)->toBe(10800);
+});
+
+test('mark as sent is blocked by an invalid unsaved discount', function () {
+    $invoice = uiDraftWithLine();
+
+    Livewire::test(EditInvoice::class, ['record' => $invoice->id])
+        ->fillForm(['discount_type' => 'percent', 'discount_value' => '150'])
+        ->callAction('markSent', data: ['sent_on' => '2026-11-21'])
+        ->assertHasErrors(['data.discount_value']);
+
+    expect($invoice->fresh()->status)->toBe(InvoiceStatus::Draft)
+        ->and($invoice->fresh()->number)->toBeNull();
+});
+
 test('a refused mark as sent shows a danger notification', function () {
     $invoice = app(InvoiceService::class)->createDraft(Client::factory()->create());
 
