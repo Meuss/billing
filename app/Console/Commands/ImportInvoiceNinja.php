@@ -6,6 +6,7 @@ use App\Domain\Import\InvoiceNinjaImporter;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use InvalidArgumentException;
 
 #[Signature('billing:import-invoice-ninja {path : Path to the Invoice Ninja backup.json}')]
 #[Description('One-off import of Clients and Projects from an Invoice Ninja backup.json (idempotent)')]
@@ -22,7 +23,13 @@ class ImportInvoiceNinja extends Command
             return self::FAILURE;
         }
 
-        $result = $importer->import($backup);
+        try {
+            $result = $importer->import($backup);
+        } catch (InvalidArgumentException $e) {
+            $this->components->error($e->getMessage());
+
+            return self::FAILURE;
+        }
 
         $this->table(['Clients created', 'Projects created', 'Skipped', 'Warnings'], [[
             $result['clients'], $result['projects'], $result['skipped'], count($result['warnings']),

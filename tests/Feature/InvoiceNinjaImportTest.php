@@ -18,8 +18,8 @@ function importFixture(): void
 it('imports clients and projects, skipping deleted ones and orphans', function () {
     importFixture();
 
-    expect(Client::count())->toBe(4)
-        ->and(Project::count())->toBe(4)
+    expect(Client::count())->toBe(5)
+        ->and(Project::count())->toBe(5)
         ->and(Client::where('name', 'Deleted Co')->exists())->toBeFalse()
         ->and(Project::where('name', 'Deleted project')->exists())->toBeFalse()
         ->and(Project::where('name', 'Orphan of deleted client')->exists())->toBeFalse();
@@ -98,12 +98,36 @@ it('is idempotent and never overwrites local edits', function () {
 
     expect($result['clients'])->toBe(0)
         ->and($result['projects'])->toBe(0)
-        ->and($result['skipped'])->toBe(8)
-        ->and(Client::count())->toBe(4)
-        ->and(Project::count())->toBe(4)
+        ->and($result['skipped'])->toBe(10)
+        ->and(Client::count())->toBe(5)
+        ->and(Project::count())->toBe(5)
         ->and(Client::where('invoice_ninja_id', 'CLfr0001aa')->first()->name)->toBe('Edited locally');
 });
 
 it('fails on a missing file', function () {
     $this->artisan('billing:import-invoice-ninja', ['path' => '/nonexistent/backup.json'])->assertFailed();
 });
+
+it('archives clients and projects flagged only by deleted_at, as in the real export', function () {
+    importFixture();
+
+    expect(Client::where('invoice_ninja_id', 'CLarc006ff')->first()->archived_at)->not->toBeNull()
+        ->and(Client::where('invoice_ninja_id', 'CLfr0001aa')->first()->archived_at)->toBeNull()
+        ->and(Project::where('invoice_ninja_id', 'PRarc007gg')->first()->archived_at)->not->toBeNull();
+});
+
+it('rejects a backup with a missing or blank id without importing anything', function (array $patch) {
+    $backup = json_decode(file_get_contents(IN_FIXTURE), true);
+    $backup['clients'][1] = $patch + $backup['clients'][1];
+    unset($backup['clients'][1]['hashed_id']);
+    $backup['clients'][1] = $patch + $backup['clients'][1];
+    $path = tempnam(sys_get_temp_dir(), 'in');
+    file_put_contents($path, json_encode($backup));
+
+    $this->artisan('billing:import-invoice-ninja', ['path' => $path])
+        ->expectsOutputToContain('clients row 1 has no hashed_id')
+        ->assertFailed();
+
+    expect(Client::count())->toBe(0);
+    unlink($path);
+})->with([[[]], [['hashed_id' => '']], [['hashed_id' => null]]]);

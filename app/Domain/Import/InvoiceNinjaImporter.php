@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Project;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 /** One-off import of Clients and Projects from an Invoice Ninja backup.json. Existing records are never touched. */
 class InvoiceNinjaImporter
@@ -24,6 +25,8 @@ class InvoiceNinjaImporter
      */
     public function import(array $backup): array
     {
+        $this->validate($backup);
+
         return DB::transaction(function () use ($backup): array {
             $result = ['clients' => 0, 'projects' => 0, 'skipped' => 0, 'warnings' => []];
             $contacts = collect($backup['client_contacts'] ?? [])->groupBy('client_id');
@@ -85,6 +88,22 @@ class InvoiceNinjaImporter
         });
     }
 
+    /** @throws InvalidArgumentException when a row lacks the keys the import depends on. */
+    private function validate(array $backup): void
+    {
+        $required = ['clients' => ['hashed_id', 'name'], 'projects' => ['hashed_id', 'name', 'client_id']];
+
+        foreach ($required as $table => $keys) {
+            foreach ($backup[$table] ?? [] as $index => $row) {
+                foreach ($keys as $key) {
+                    if (! is_scalar($row[$key] ?? null) || trim((string) $row[$key]) === '') {
+                        throw new InvalidArgumentException("{$table} row {$index} has no {$key}");
+                    }
+                }
+            }
+        }
+    }
+
     /**
      * @param  array<string, mixed>  $row
      * @return array<string, mixed>
@@ -113,7 +132,7 @@ class InvoiceNinjaImporter
     /** Invoice Ninja "archived" is a set deleted_at with is_deleted false; an explicit archived_at wins. */
     private function applyArchive(Client|Project $model, array $row): void
     {
-        $at = $row['archived_at'] ?? (($row['is_deleted'] ?? false) ? null : ($row['deleted_at'] ?? null));
+        $at = ($row['archived_at'] ?? null) ?: (($row['is_deleted'] ?? false) ? null : ($row['deleted_at'] ?? null));
         if ($at) {
             $model->archived_at = is_numeric($at) ? Carbon::createFromTimestamp((int) $at) : Carbon::parse($at);
         }
