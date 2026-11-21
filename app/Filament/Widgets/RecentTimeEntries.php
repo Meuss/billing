@@ -29,7 +29,7 @@ class RecentTimeEntries extends TableWidget
                 TextColumn::make('task.project.client.name')->label('Client'),
                 TextColumn::make('duration_minutes')->label('Duration')->alignEnd()
                     ->formatStateUsing(fn (int $state): string => Hours::format($state)),
-                TextColumn::make('description')->limit(60),
+                TextColumn::make('description')->limit(60)->placeholder('-'),
             ])
             ->emptyStateHeading('No time entries yet');
     }

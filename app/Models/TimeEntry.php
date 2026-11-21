@@ -30,10 +30,11 @@ class TimeEntry extends Model
 
     protected static function booted(): void
     {
-        // Every write path is normalised: duration is rounded up and the end follows the start.
+        // Every write path is normalised: start on a 5-minute mark, duration rounded up, end follows the start.
         static::saving(function (TimeEntry $entry): void {
             $entry->duration_minutes = Duration::roundUp((int) $entry->duration_minutes);
-            $entry->ended_at = CarbonImmutable::instance($entry->started_at)->addMinutes($entry->duration_minutes);
+            $entry->started_at = Duration::floorToFiveMinutes($entry->started_at);
+            $entry->ended_at = $entry->started_at->toImmutable()->addMinutes($entry->duration_minutes);
         });
 
         static::creating(function (TimeEntry $entry): void {
@@ -61,7 +62,7 @@ class TimeEntry extends Model
         return $this->belongsTo(Task::class);
     }
 
-    public static function fromStartAndDuration(Task $task, CarbonImmutable $start, int $minutes, string $description): self
+    public static function fromStartAndDuration(Task $task, CarbonImmutable $start, int $minutes, ?string $description): self
     {
         $rounded = Duration::roundUp($minutes);
 
@@ -74,7 +75,7 @@ class TimeEntry extends Model
         ]);
     }
 
-    public static function fromStartAndEnd(Task $task, CarbonImmutable $start, CarbonImmutable $end, string $description): self
+    public static function fromStartAndEnd(Task $task, CarbonImmutable $start, CarbonImmutable $end, ?string $description): self
     {
         if ($end->lessThanOrEqualTo($start)) {
             throw new InvalidArgumentException('The end must be after the start.');

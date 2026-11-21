@@ -15,6 +15,7 @@ use App\Models\TimeEntry;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Testing\TestAction;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
 use function Pest\Laravel\actingAs;
@@ -50,9 +51,9 @@ test('end before or equal start is rejected', function () {
 
     Livewire::test(TimeEntriesRelationManager::class, ['ownerRecord' => $task, 'pageClass' => ViewTask::class])
         ->callAction(TestAction::make('create')->table(), [
+            'duration' => 30,
             'started_on' => '2026-11-21',
             'started_time' => '09:00',
-            'use_end_time' => true,
             'ended_on' => '2026-11-21',
             'ended_time' => '08:00',
             'description' => 'Work',
@@ -70,9 +71,9 @@ test('entry across midnight is valid', function () {
     $task = Task::factory()->create();
     Livewire::test(TimeEntriesRelationManager::class, ['ownerRecord' => $task, 'pageClass' => ViewTask::class])
         ->callAction(TestAction::make('create')->table(), [
+            'duration' => 60,
             'started_on' => '2026-11-21',
             'started_time' => '23:30',
-            'use_end_time' => true,
             'ended_on' => '2026-11-22',
             'ended_time' => '00:30',
             'description' => 'Late',
@@ -146,28 +147,15 @@ test('create action works with start and duration', function () {
 
     Livewire::test(TimeEntriesRelationManager::class, ['ownerRecord' => $task, 'pageClass' => ViewTask::class])
         ->callAction(TestAction::make('create')->table(), [
+            'duration' => 90,
             'started_on' => '2026-11-21',
             'started_time' => '09:00',
-            'duration' => 90,
             'description' => 'Work',
         ])
         ->assertHasNoFormErrors();
 
     $entry = $task->timeEntries()->sole();
     expect($entry->duration_minutes)->toBe(90)->and($entry->ended_at->format('H:i'))->toBe('10:30');
-});
-
-test('description is required', function () {
-    $task = Task::factory()->create();
-
-    Livewire::test(TimeEntriesRelationManager::class, ['ownerRecord' => $task, 'pageClass' => ViewTask::class])
-        ->callAction(TestAction::make('create')->table(), [
-            'started_on' => '2026-11-21',
-            'started_time' => '09:00',
-            'duration' => 30,
-            'description' => '',
-        ])
-        ->assertHasFormErrors(['description' => 'required']);
 });
 
 test('task create form lists only selectable projects', function () {
@@ -243,9 +231,9 @@ test('end date defaults to the start date when omitted', function () {
 
     Livewire::test(TimeEntriesRelationManager::class, ['ownerRecord' => $task, 'pageClass' => ViewTask::class])
         ->callAction(TestAction::make('create')->table(), [
+            'duration' => 90,
             'started_on' => '2026-01-05',
             'started_time' => '09:00',
-            'use_end_time' => true,
             'ended_on' => null,
             'ended_time' => '10:30',
             'description' => 'Past work',
@@ -254,4 +242,144 @@ test('end date defaults to the start date when omitted', function () {
 
     $entry = $task->timeEntries()->sole();
     expect($entry->ended_at->toDateTimeString())->toBe('2026-01-05 10:30:00')->and($entry->duration_minutes)->toBe(90);
+});
+
+function createForm(Task $task): Testable
+{
+    return Livewire::test(TimeEntriesRelationManager::class, ['ownerRecord' => $task, 'pageClass' => ViewTask::class])
+        ->mountAction(TestAction::make('create')->table());
+}
+
+function formTimes(Testable $form): array
+{
+    $get = fn (string $key) => $form->get("mountedActions.0.data.$key");
+    $join = fn (?string $d, ?string $t) => $d && $t ? CarbonImmutable::parse($d)->toDateString().' '.CarbonImmutable::parse($t)->format('H:i') : null;
+
+    return [
+        'start' => $join($get('started_on'), $get('started_time')),
+        'end' => $join($get('ended_on'), $get('ended_time')),
+        'duration' => (int) $get('duration'),
+    ];
+}
+
+test('picking a duration fills start and end from now floored to 5 minutes', function (string $now, int $minutes, string $start, string $end) {
+    $this->travelTo(CarbonImmutable::parse($now));
+    $task = Task::factory()->create();
+
+    $form = createForm($task)->set('mountedActions.0.data.duration', $minutes);
+
+    expect(formTimes($form))->toBe(['start' => $start, 'end' => $end, 'duration' => $minutes]);
+})->with([
+    'at 23:17' => ['2026-11-21 23:17:40', 30, '2026-11-21 22:45', '2026-11-21 23:15'],
+    'at 23:18' => ['2026-11-21 23:18:00', 30, '2026-11-21 22:45', '2026-11-21 23:15'],
+    'across midnight' => ['2026-11-22 00:10:00', 30, '2026-11-21 23:40', '2026-11-22 00:10'],
+]);
+
+test('saving with only a duration succeeds with an empty description', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-11-21 23:17:00'));
+    $task = Task::factory()->create();
+
+    createForm($task)
+        ->set('mountedActions.0.data.duration', 30)
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    $entry = $task->timeEntries()->sole();
+    expect($entry->duration_minutes)->toBe(30)
+        ->and($entry->started_at->format('Y-m-d H:i'))->toBe('2026-11-21 22:45')
+        ->and($entry->ended_at->format('Y-m-d H:i'))->toBe('2026-11-21 23:15')
+        ->and($entry->description)->toBeNull();
+});
+
+test('saving with only a duration set directly (no live update) applies the now rule', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-11-21 23:18:00'));
+    $task = Task::factory()->create();
+
+    Livewire::test(TimeEntriesRelationManager::class, ['ownerRecord' => $task, 'pageClass' => ViewTask::class])
+        ->callAction(TestAction::make('create')->table(), ['duration' => 30])
+        ->assertHasNoFormErrors();
+
+    $entry = $task->timeEntries()->sole();
+    expect($entry->started_at->format('H:i'))->toBe('22:45')->and($entry->ended_at->format('H:i'))->toBe('23:15');
+});
+
+test('duration is the only required field', function () {
+    $task = Task::factory()->create();
+
+    Livewire::test(TimeEntriesRelationManager::class, ['ownerRecord' => $task, 'pageClass' => ViewTask::class])
+        ->callAction(TestAction::make('create')->table(), ['duration' => null])
+        ->assertHasFormErrors(['duration' => 'required']);
+});
+
+test('changing the start time floors to 5 minutes and moves the end', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-11-21 15:00:00'));
+    $form = createForm(Task::factory()->create())
+        ->set('mountedActions.0.data.duration', 60)
+        ->set('mountedActions.0.data.started_on', '2026-11-21')
+        ->set('mountedActions.0.data.started_time', '09:03');
+
+    expect(formTimes($form))->toBe(['start' => '2026-11-21 09:00', 'end' => '2026-11-21 10:00', 'duration' => 60]);
+
+    $form->set('mountedActions.0.data.started_time', '09:08');
+    expect(formTimes($form)['start'])->toBe('2026-11-21 09:05');
+});
+
+test('changing the end recomputes the rounded duration and the end follows', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-11-21 15:00:00'));
+    $form = createForm(Task::factory()->create())
+        ->set('mountedActions.0.data.duration', 60)
+        ->set('mountedActions.0.data.started_on', '2026-11-21')
+        ->set('mountedActions.0.data.started_time', '09:00')
+        ->set('mountedActions.0.data.ended_time', '09:50');
+
+    expect(formTimes($form))->toBe(['start' => '2026-11-21 09:00', 'end' => '2026-11-21 10:00', 'duration' => 60]);
+});
+
+test('changing the duration keeps an existing end and moves the start', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-11-21 15:00:00'));
+    $form = createForm(Task::factory()->create())
+        ->set('mountedActions.0.data.duration', 60);
+
+    expect(formTimes($form))->toBe(['start' => '2026-11-21 14:00', 'end' => '2026-11-21 15:00', 'duration' => 60]);
+
+    $form->set('mountedActions.0.data.duration', 120);
+    expect(formTimes($form))->toBe(['start' => '2026-11-21 13:00', 'end' => '2026-11-21 15:00', 'duration' => 120]);
+});
+
+test('duration select lists 15-minute steps as HH:MM and is searchable', function () {
+    $task = Task::factory()->create();
+    $form = createForm($task);
+    $select = collect((fn () => $this->getMountedActionSchema())->call($form->instance())->getFlatComponents())->first(fn ($c) => $c->getName() === 'duration');
+
+    expect($select->getOptions())->toHaveKeys([15, 60, 720])
+        ->and($select->getOptions()[15])->toBe('00:15')
+        ->and($select->getOptions()[60])->toBe('01:00')
+        ->and($select->getOptions()[720])->toBe('12:00')
+        ->and($select->getOptions())->toHaveCount(48)
+        ->and($select->isSearchable())->toBeTrue();
+});
+
+test('editing an entry longer than 12 hours still shows its duration', function () {
+    $task = Task::factory()->create();
+    $entry = TimeEntry::fromStartAndDuration($task, at('06:00'), 780, null);
+    $entry->save();
+
+    $form = Livewire::test(TimeEntriesRelationManager::class, ['ownerRecord' => $task, 'pageClass' => ViewTask::class])
+        ->mountAction(TestAction::make('edit')->table($entry));
+    $select = collect((fn () => $this->getMountedActionSchema())->call($form->instance())->getFlatComponents())->first(fn ($c) => $c->getName() === 'duration');
+
+    expect($select->getOptions())->toHaveKey(780)->and($select->getOptions()[780])->toBe('13:00');
+    $form->assertSet('mountedActions.0.data.duration', 780);
+});
+
+test('saving floors the start to a 5 minute mark', function () {
+    $entry = TimeEntry::create([
+        'task_id' => Task::factory()->create()->id,
+        'started_at' => at('09:08'),
+        'duration_minutes' => 30,
+    ]);
+
+    expect($entry->fresh()->started_at->format('H:i'))->toBe('09:05')
+        ->and($entry->fresh()->ended_at->format('H:i'))->toBe('09:35')
+        ->and($entry->fresh()->description)->toBeNull();
 });
