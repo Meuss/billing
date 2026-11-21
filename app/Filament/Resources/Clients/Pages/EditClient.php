@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Clients\Pages;
 
 use App\Filament\Resources\Clients\ClientResource;
+use App\Filament\Support\ArchiveActions;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 
@@ -14,6 +15,7 @@ class EditClient extends EditRecord
     {
         return [
             ViewAction::make(),
+            ...ArchiveActions::make(),
         ];
     }
 }

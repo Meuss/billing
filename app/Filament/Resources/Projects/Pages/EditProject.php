@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Projects\Pages;
 
 use App\Filament\Resources\Projects\ProjectResource;
+use App\Filament\Support\ArchiveActions;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 
@@ -14,6 +15,7 @@ class EditProject extends EditRecord
     {
         return [
             ViewAction::make(),
+            ...ArchiveActions::make(),
         ];
     }
 }

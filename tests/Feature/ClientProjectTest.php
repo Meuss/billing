@@ -1,11 +1,14 @@
 <?php
 
 use App\Filament\Resources\Clients\ClientResource;
+use App\Filament\Resources\Clients\Pages\EditClient;
 use App\Filament\Resources\Clients\Pages\ListClients;
 use App\Filament\Resources\Clients\Pages\ViewClient;
 use App\Filament\Resources\Clients\RelationManagers\ProjectsRelationManager;
 use App\Filament\Resources\Projects\Pages\CreateProject;
+use App\Filament\Resources\Projects\Pages\EditProject;
 use App\Filament\Resources\Projects\Pages\ListProjects;
+use App\Filament\Resources\Projects\Pages\ViewProject;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\User;
@@ -113,4 +116,29 @@ test('project rate is entered in chf and blank is null', function () {
         ->call('create')
         ->assertHasNoFormErrors();
     expect(Project::where('name', 'Other')->first()->rate_cents)->toBeNull();
+});
+
+test('archive and unarchive header actions work on record pages', function () {
+    $client = Client::factory()->create();
+    $project = Project::factory()->for($client)->create();
+
+    foreach ([
+        [ViewClient::class, $client],
+        [EditClient::class, $client],
+        [ViewProject::class, $project],
+        [EditProject::class, $project],
+    ] as [$page, $record]) {
+        $record->unarchive();
+
+        Livewire::test($page, ['record' => $record->getKey()])
+            ->assertActionVisible('archive')
+            ->assertActionHidden('unarchive')
+            ->callAction('archive');
+        expect($record->fresh()->isArchived())->toBeTrue();
+
+        Livewire::test($page, ['record' => $record->getKey()])
+            ->assertActionHidden('archive')
+            ->callAction('unarchive');
+        expect($record->fresh()->isArchived())->toBeFalse();
+    }
 });
