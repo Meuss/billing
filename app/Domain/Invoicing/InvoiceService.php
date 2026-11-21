@@ -25,7 +25,7 @@ class InvoiceService
 {
     public const PAYMENT_TERM_DAYS = 30;
 
-    public function __construct(private InvoiceNumberGenerator $numbers) {}
+    public function __construct(private InvoiceNumberGenerator $numbers, private InvoicePdf $pdf) {}
 
     public function createDraft(Client $client): Invoice
     {
@@ -180,6 +180,9 @@ class InvoiceService
                 'total_cents' => $totals->totalCents,
                 'language' => $invoice->client->language,
             ])->save();
+
+            // Inside the transaction: an Invoice is never sent without its stored PDF.
+            $this->pdf->store($invoice);
         });
     }
 

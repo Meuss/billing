@@ -22,4 +22,12 @@ class Chf
 
         return ($cents < 0 ? '-' : '').intdiv($abs, 100).'.'.str_pad((string) ($abs % 100), 2, '0', STR_PAD_LEFT);
     }
+
+    /** Swiss display format: 123450 → "CHF 1'234.50", -1250 → "CHF -12.50". */
+    public static function format(int $cents): string
+    {
+        $abs = abs($cents);
+
+        return 'CHF '.($cents < 0 ? '-' : '').number_format(intdiv($abs, 100), 0, '', "'").'.'.str_pad((string) ($abs % 100), 2, '0', STR_PAD_LEFT);
+    }
 }

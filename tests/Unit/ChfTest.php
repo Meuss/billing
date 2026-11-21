@@ -25,3 +25,15 @@ test('cents convert to chf strings, including negatives', function (int $cents, 
     [-50, '-0.50'],
     [-5, '-0.05'],
 ]);
+
+test('cents format as swiss amounts', function (int $cents, string $formatted) {
+    expect(Chf::format($cents))->toBe($formatted);
+})->with([
+    [123450, "CHF 1'234.50"],
+    [0, 'CHF 0.00'],
+    [5, 'CHF 0.05'],
+    [99999, 'CHF 999.99'],
+    [123456789, "CHF 1'234'567.89"],
+    [-1250, 'CHF -12.50'],
+    [-123450, "CHF -1'234.50"],
+]);
