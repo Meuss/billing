@@ -30,7 +30,6 @@ class ProjectsTable
                 EditAction::make(),
                 ...ArchiveActions::make(),
                 GuardedDeleteAction::make('its tasks and time entries'),
-                GuardedDeleteAction::make('its tasks and time entries'),
             ]);
     }
 }

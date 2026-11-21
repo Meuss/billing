@@ -55,6 +55,8 @@ class Invoice extends Model
             if ($invoice->getOriginal('status') !== InvoiceStatus::Draft) {
                 throw new DomainException('Only a draft invoice can be deleted.');
             }
+            // Lines go as models (not by FK cascade) so each releases its Task/Expense.
+            $invoice->lines()->get()->each->delete();
         });
     }
 

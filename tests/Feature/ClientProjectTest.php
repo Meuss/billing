@@ -184,3 +184,12 @@ test('delete header actions remove an uninvoiced client and project', function (
     Livewire::test(ListClients::class)->callAction(TestAction::make('delete')->table($client));
     expect($client->fresh())->toBeNull();
 });
+
+test('client and project tables offer a single delete action', function () {
+    foreach ([ListClients::class, ListProjects::class] as $page) {
+        $names = collect(Livewire::test($page)->instance()->getTable()->getRecordActions())
+            ->map(fn ($action) => $action->getName());
+
+        expect($names->filter(fn ($name) => $name === 'delete'))->toHaveCount(1);
+    }
+});

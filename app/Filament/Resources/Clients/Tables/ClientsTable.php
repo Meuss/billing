@@ -29,7 +29,6 @@ class ClientsTable
                 EditAction::make(),
                 ...ArchiveActions::make(),
                 GuardedDeleteAction::make('its projects, tasks, time entries and expenses'),
-                GuardedDeleteAction::make('its projects, tasks, time entries and expenses'),
             ]);
     }
 }

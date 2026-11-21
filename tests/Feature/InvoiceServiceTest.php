@@ -14,6 +14,9 @@ use App\Models\Task;
 use App\Models\TimeEntry;
 use Carbon\CarbonImmutable;
 
+// The fixed dates below assume this day; freezing it keeps them valid on any real date.
+beforeEach(fn () => $this->travelTo(CarbonImmutable::parse('2026-11-21 12:00')));
+
 function invoicing(): InvoiceService
 {
     return app(InvoiceService::class);
@@ -190,7 +193,7 @@ test('sending an empty invoice or one dated in the future is refused', function 
     expect(fn () => invoicing()->markSent($invoice, day('2026-11-20')))->toThrow(DomainException::class);
 
     invoicing()->addItem($invoice, 'Work', '1', 12000);
-    expect(fn () => invoicing()->markSent($invoice, day('2026-11-22')))->toThrow(DomainException::class);
+    expect(fn () => invoicing()->markSent($invoice, CarbonImmutable::today()->addDay()))->toThrow(DomainException::class);
 
     invoicing()->markSent($invoice, CarbonImmutable::today());
     expect($invoice->fresh()->status)->toBe(InvoiceStatus::Sent);
@@ -353,4 +356,42 @@ test('deleting a client cascades projects, tasks, time entries and expenses', fu
         ->and(Task::count())->toBe(0)
         ->and(TimeEntry::count())->toBe(0)
         ->and(Expense::count())->toBe(0);
+});
+
+test('deleting a draft directly releases its work so it can be invoiced again', function () {
+    $client = Client::factory()->create();
+    $task = doneTask($client);
+    $expense = Expense::factory()->for($client)->create();
+    $invoice = invoicing()->createDraft($client);
+    invoicing()->addTask($invoice, $task);
+    invoicing()->addExpense($invoice, $expense);
+
+    $invoice->delete();
+
+    expect(Invoice::count())->toBe(0)
+        ->and($task->fresh()->status)->toBe(TaskStatus::Done)
+        ->and($expense->fresh()->status)->toBe(ExpenseStatus::Unbilled);
+    $again = invoicing()->createDraft($client);
+    invoicing()->addTask($again, $task->fresh());
+    invoicing()->addExpense($again, $expense->fresh());
+    expect($again->lines()->count())->toBe(2);
+});
+
+test('deleting a draft line directly releases its task or expense', function () {
+    $client = Client::factory()->create();
+    $task = doneTask($client);
+    $expense = Expense::factory()->for($client)->create();
+    $invoice = invoicing()->createDraft($client);
+    $taskLine = invoicing()->addTask($invoice, $task);
+    $expenseLine = invoicing()->addExpense($invoice, $expense);
+
+    $taskLine->delete();
+    $expenseLine->delete();
+
+    expect($invoice->lines()->count())->toBe(0)
+        ->and($task->fresh()->status)->toBe(TaskStatus::Done)
+        ->and($expense->fresh()->status)->toBe(ExpenseStatus::Unbilled);
+    invoicing()->addTask($invoice, $task->fresh());
+    invoicing()->addExpense($invoice, $expense->fresh());
+    expect($invoice->lines()->count())->toBe(2);
 });

@@ -7,6 +7,9 @@ use App\Models\Invoice;
 use App\Settings\BillingSettings;
 use Carbon\CarbonImmutable;
 
+// The fixed dates below assume this day; freezing it keeps them valid on any real date.
+beforeEach(fn () => $this->travelTo(CarbonImmutable::parse('2026-11-21 12:00')));
+
 function sendNew(string $sentOn): Invoice
 {
     $service = app(InvoiceService::class);

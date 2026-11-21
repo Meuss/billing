@@ -113,8 +113,7 @@ class InvoiceService
     {
         DB::transaction(function () use ($line): void {
             $this->lock($line->invoice, InvoiceStatus::Draft);
-            $this->release($line);
-            $line->delete();
+            $line->delete(); // releases its Task/Expense
         });
     }
 
@@ -141,11 +140,7 @@ class InvoiceService
     {
         DB::transaction(function () use ($invoice): void {
             $this->lock($invoice, InvoiceStatus::Draft);
-            foreach ($invoice->lines()->get() as $line) {
-                $this->release($line);
-                $line->delete();
-            }
-            $invoice->delete();
+            $invoice->delete(); // deletes its lines, which release their Tasks/Expenses
         });
     }
 
@@ -206,7 +201,7 @@ class InvoiceService
             $this->assertNotBeforeSent($invoice, $on);
 
             foreach ($invoice->lines()->get() as $line) {
-                $this->release($line);
+                $line->releaseSource();
                 $line->update(['released' => true]);
             }
             $invoice->forceFill(['status' => InvoiceStatus::Cancelled, 'cancelled_on' => $on->startOfDay()])->save();
@@ -219,16 +214,6 @@ class InvoiceService
             ...$attributes,
             'position' => (int) $invoice->lines()->max('position') + 1,
         ]);
-    }
-
-    /** Returns the Task to done or the Expense to unbilled. */
-    private function release(InvoiceLine $line): void
-    {
-        match ($line->type) {
-            InvoiceLineType::Task => $line->task->update(['status' => TaskStatus::Done]),
-            InvoiceLineType::Expense => $line->expense->update(['status' => ExpenseStatus::Unbilled]),
-            InvoiceLineType::Item => null,
-        };
     }
 
     /** Locks the invoice row, reloads it and checks its status. */
