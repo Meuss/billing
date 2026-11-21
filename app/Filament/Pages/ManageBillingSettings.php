@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Settings\BillingSettings;
+use App\Support\Chf;
 use BackedEnum;
 use Closure;
 use Filament\Forms\Components\Textarea;
@@ -85,14 +86,12 @@ class ManageBillingSettings extends SettingsPage
 
     public static function chfToCents(string $chf): int
     {
-        [$whole, $fraction] = array_pad(explode('.', trim($chf), 2), 2, '');
-
-        return ((int) $whole) * 100 + (int) str_pad($fraction, 2, '0');
+        return Chf::toCents($chf);
     }
 
     public static function centsToChf(int $cents): string
     {
-        return intdiv($cents, 100).'.'.str_pad((string) ($cents % 100), 2, '0', STR_PAD_LEFT);
+        return Chf::fromCents($cents);
     }
 
     public static function normaliseIban(string $iban): string
