@@ -42,4 +42,15 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * Indicate that the user has set up app (TOTP) authentication, so the
+     * required-MFA panel middleware lets them through in tests.
+     */
+    public function withMfa(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'app_authentication_secret' => 'JBSWY3DPEHPK3PXP',
+        ]);
+    }
 }
