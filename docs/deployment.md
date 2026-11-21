@@ -13,7 +13,7 @@ Short checklist for the first deploy and for later ones.
 - Run `php artisan migrate --force` on every deploy.
 
 ## Build (CI)
-`public/build` and the Filament assets are gitignored, so CI must produce them before shipping:
+`public/build` and the Filament assets are gitignored, so CI must produce them before shipping. Use the versions pinned in the repo: PHP from `.flockrc` (`php=8.5`) and Node from `.nvmrc` (e.g. `actions/setup-node` with `node-version-file: .nvmrc`). The production PHP on Infomaniak must be 8.5 too.
 
 ```
 composer install --no-dev --optimize-autoloader
