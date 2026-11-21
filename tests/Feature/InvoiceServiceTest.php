@@ -395,3 +395,26 @@ test('deleting a draft line directly releases its task or expense', function () 
     invoicing()->addExpense($invoice, $expense->fresh());
     expect($invoice->lines()->count())->toBe(2);
 });
+
+test('mark paid refuses a future payment date', function () {
+    $invoice = invoicing()->createDraft(Client::factory()->create());
+    invoicing()->addItem($invoice, 'Work', '1', 12000);
+    invoicing()->markSent($invoice, day('2026-11-10'));
+
+    expect(fn () => invoicing()->markPaid($invoice, day('2026-11-22')))->toThrow(DomainException::class, 'future');
+    invoicing()->markPaid($invoice, day('2026-11-21'));
+    expect($invoice->fresh()->status)->toBe(InvoiceStatus::Paid);
+});
+
+test('a billed task cannot be moved to another project', function () {
+    $client = Client::factory()->create();
+    $task = doneTask($client);
+    invoicing()->addTask(invoicing()->createDraft($client), $task);
+    $other = Project::factory()->for($client)->create();
+
+    expect(fn () => $task->fresh()->update(['project_id' => $other->id]))->toThrow(DomainException::class);
+
+    $free = doneTask($client);
+    $free->update(['project_id' => $other->id]);
+    expect($free->fresh()->project_id)->toBe($other->id);
+});

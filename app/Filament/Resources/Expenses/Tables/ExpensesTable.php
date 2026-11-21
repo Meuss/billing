@@ -44,7 +44,7 @@ class ExpensesTable
                 ViewAction::make(),
                 EditAction::make()->hidden(fn (Expense $record): bool => $record->isBilled()),
                 static::duplicateAction(),
-                DeleteAction::make()->hidden(fn (Expense $record): bool => $record->isBilled()),
+                DeleteAction::make()->hidden(fn (Expense $record): bool => ! $record->canBeDeleted()),
             ]);
     }
 

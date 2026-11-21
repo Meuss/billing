@@ -43,6 +43,9 @@ class TaskForm
                 ),
             )
             ->required()
+            // A billed Task stays in its Project.
+            ->disabled(fn (?Model $record): bool => $record instanceof Task && $record->status === TaskStatus::Billed)
+            ->dehydrated(fn (?Model $record): bool => ! ($record instanceof Task && $record->status === TaskStatus::Billed))
             ->searchable()
             ->preload();
     }

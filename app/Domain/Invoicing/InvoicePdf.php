@@ -32,11 +32,13 @@ class InvoicePdf
     {
         $fontCache = storage_path('fonts');
         File::ensureDirectoryExists($fontCache);
+        $tempDir = storage_path('app/dompdf-tmp');
+        File::ensureDirectoryExists($tempDir);
 
         $dompdf = new Dompdf(new Options([
             'fontDir' => $fontCache,
             'fontCache' => $fontCache,
-            'tempDir' => sys_get_temp_dir(),
+            'tempDir' => $tempDir,
             'chroot' => [resource_path('fonts/pdf'), public_path('brand')],
             'isRemoteEnabled' => false,
             'isFontSubsettingEnabled' => true,

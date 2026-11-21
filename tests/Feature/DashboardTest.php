@@ -105,7 +105,7 @@ test('revenue this year sums total_cents of invoices paid this calendar year', f
     // Sent dates must ascend.
     dashInvoice($client, '2025-12-01', '2025-12-20'); // paid last year
     dashInvoice($client, '2026-03-01', '2026-03-10');
-    dashInvoice($client, '2026-04-01', '2026-12-31');
+    dashInvoice($client, '2026-04-01', '2026-11-15');
     dashInvoice($client, '2026-05-01', null, cancel: true);
     dashInvoice($client, '2026-06-01');               // sent, unpaid
 
@@ -166,4 +166,11 @@ test('dashboard renders', function () {
         ->assertSeeLivewire(TasksInProgress::class)
         ->assertSeeLivewire(OpenInvoices::class)
         ->assertDontSeeLivewire(FilamentInfoWidget::class);
+});
+
+test('unbilled work widget marks archived clients', function () {
+    $client = Client::factory()->create(['name' => 'Gone Corp', 'archived_at' => now()]);
+    dashTask(Project::factory()->for($client)->create(), 60, TaskStatus::Done);
+
+    Livewire::test(UnbilledWorkTable::class)->assertSee('Gone Corp (archived)');
 });

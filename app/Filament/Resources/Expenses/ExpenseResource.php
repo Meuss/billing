@@ -50,7 +50,7 @@ class ExpenseResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
-        return ! $record->isBilled();
+        return $record->canBeDeleted();
     }
 
     public static function getPages(): array

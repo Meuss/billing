@@ -40,6 +40,13 @@ class Expense extends Model
     protected static function booted(): void
     {
         static::saving(function (Expense $expense): void {
+            // A billed amount that equalled the cost follows a corrected cost, unless it was changed explicitly too.
+            if ($expense->exists
+                && $expense->isDirty('cost_cents')
+                && ! $expense->isDirty('billed_amount_cents')
+                && $expense->getOriginal('billed_amount_cents') === $expense->getOriginal('cost_cents')) {
+                $expense->billed_amount_cents = $expense->cost_cents;
+            }
             if ($expense->billed_amount_cents === null) {
                 $expense->billed_amount_cents = $expense->cost_cents;
             }
@@ -57,6 +64,9 @@ class Expense extends Model
         static::deleting(function (Expense $expense): void {
             if ($expense->status === ExpenseStatus::Billed) {
                 throw new DomainException('A billed expense cannot be deleted.');
+            }
+            if (! $expense->canBeDeleted()) {
+                throw new DomainException('An expense that appeared on an invoice cannot be deleted.');
             }
         });
 
@@ -81,6 +91,12 @@ class Expense extends Model
     public function invoiceLine(): HasOne
     {
         return $this->hasOne(InvoiceLine::class)->where('released', false);
+    }
+
+    /** False once any Invoice Line, released or not, references this Expense. */
+    public function canBeDeleted(): bool
+    {
+        return $this->exists && ! $this->isBilled() && ! InvoiceLine::query()->where('expense_id', $this->getKey())->exists();
     }
 
     public function isBilled(): bool

@@ -86,11 +86,11 @@ class LinesRelationManager extends RelationManager
             ->label('Add tasks')
             ->icon(Heroicon::OutlinedClock)
             ->visible(fn (): bool => $this->invoice()->isDraft())
-            ->modalDescription('Non-billed tasks of this client\'s active projects.')
+            ->modalDescription('Non-billed tasks of this client\'s projects, archived ones included.')
             ->schema(fn (): array => [
                 CheckboxList::make('tasks')
                     ->hiddenLabel()
-                    ->options(fn (): array => $this->availableTasks()->mapWithKeys(fn (Task $task) => [$task->id => $task->project->name.' — '.$task->name])->all())
+                    ->options(fn (): array => $this->availableTasks()->mapWithKeys(fn (Task $task) => [$task->id => $task->project->name.($task->project->isArchived() ? ' (archived)' : '').' — '.$task->name])->all())
                     ->descriptions(fn (): array => $this->availableTasks()->mapWithKeys(fn (Task $task) => [
                         $task->id => Hours::format($task->totalMinutes()).' h · '.Chf::format(Money::forMinutes($task->totalMinutes(), $task->project->effectiveRateCents())).' · '.$task->status->label(),
                     ])->all())
@@ -158,12 +158,12 @@ class LinesRelationManager extends RelationManager
             )));
     }
 
-    /** The Client's non-billed Tasks in Projects that may still receive work (Review Focus 5), keyed by id. */
+    /** All of the Client's non-billed Tasks, including those in archived Projects (Ruling R13), keyed by id. */
     protected function availableTasks(): Collection
     {
         return Task::query()
             ->where('status', '!=', TaskStatus::Billed)
-            ->whereHas('project', fn (Builder $project) => $project->selectable()->where('client_id', $this->invoice()->client_id))
+            ->whereHas('project', fn (Builder $project) => $project->where('client_id', $this->invoice()->client_id))
             ->with(['project', 'timeEntries'])
             ->orderBy(Project::select('name')->whereColumn('projects.id', 'tasks.project_id'))
             ->orderBy('id')

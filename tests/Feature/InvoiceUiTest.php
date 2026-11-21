@@ -74,7 +74,7 @@ test('create draft for an active client and land on its edit page', function () 
     $component->assertRedirect(EditInvoice::getUrl(['record' => $invoice]));
 });
 
-test('add tasks lists only the client\'s non-billed tasks from active projects and adds the selected ones', function () {
+test('add tasks lists all of the client\'s non-billed tasks, labelling archived projects, and adds the selected ones', function () {
     $client = Client::factory()->create();
     $project = Project::factory()->for($client)->create(['name' => 'Website']);
     $done = uiTask($project, 'Homepage', 90);
@@ -88,19 +88,19 @@ test('add tasks lists only the client\'s non-billed tasks from active projects a
 
     linesManager($invoice)
         ->mountAction(TestAction::make('addTasks')->table())
-        ->assertMountedActionModalSee(['Website', 'Homepage', '1:30', 'CHF 180.00', 'Contact form'])
-        ->assertMountedActionModalDontSee(['Already invoiced', 'Old archived work', 'Someone else']);
+        ->assertMountedActionModalSee(['Website', 'Homepage', '1:30', 'CHF 180.00', 'Contact form', 'Old archived work', '(archived)'])
+        ->assertMountedActionModalDontSee(['Already invoiced', 'Someone else']);
 
     linesManager($invoice)
-        ->callAction(TestAction::make('addTasks')->table(), data: ['tasks' => [$done->id, $todo->id]])
+        ->callAction(TestAction::make('addTasks')->table(), data: ['tasks' => [$done->id, $todo->id, $archivedProject->id]])
         ->assertHasNoActionErrors();
 
-    expect($invoice->lines()->pluck('task_id')->all())->toEqualCanonicalizing([$done->id, $todo->id])
+    expect($invoice->lines()->pluck('task_id')->all())->toEqualCanonicalizing([$done->id, $todo->id, $archivedProject->id])
         ->and($done->fresh()->status)->toBe(TaskStatus::Billed);
 
     // Ineligible ids sent anyway are never added.
-    linesManager($invoice)->callAction(TestAction::make('addTasks')->table(), data: ['tasks' => [$foreign->id, $archivedProject->id]]);
-    expect($invoice->lines()->count())->toBe(2);
+    linesManager($invoice)->callAction(TestAction::make('addTasks')->table(), data: ['tasks' => [$foreign->id, $billedElsewhere->id]]);
+    expect($invoice->lines()->count())->toBe(3);
 });
 
 test('add expenses lists only the client\'s unbilled expenses and adds the selected ones', function () {

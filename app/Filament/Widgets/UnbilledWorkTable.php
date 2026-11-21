@@ -24,7 +24,7 @@ class UnbilledWorkTable extends TableWidget
             ->records(fn (): array => UnbilledWork::perClient()
                 ->mapWithKeys(fn (array $row): array => [$row['client']->id => [
                     'client_id' => $row['client']->id,
-                    'client' => $row['client']->name,
+                    'client' => $row['client']->name.($row['client']->isArchived() ? ' (archived)' : ''),
                     'minutes' => $row['minutes'],
                     'task_amount_cents' => $row['task_amount_cents'],
                     'expense_amount_cents' => $row['expense_amount_cents'],

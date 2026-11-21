@@ -190,6 +190,9 @@ class InvoiceService
     {
         DB::transaction(function () use ($invoice, $paidOn): void {
             $this->lock($invoice, InvoiceStatus::Sent);
+            if ($paidOn->startOfDay()->greaterThan(today())) {
+                throw new DomainException('The payment date cannot be in the future.');
+            }
             $this->assertNotBeforeSent($invoice, $paidOn);
 
             $invoice->forceFill(['status' => InvoiceStatus::Paid, 'paid_on' => $paidOn->startOfDay()])->save();

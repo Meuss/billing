@@ -1,6 +1,8 @@
 <?php
 
+use App\Domain\Invoicing\InvoiceService;
 use App\Enums\ExpenseStatus;
+use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\Expenses\Pages\CreateExpense;
 use App\Filament\Resources\Expenses\Pages\EditExpense;
 use App\Filament\Resources\Expenses\Pages\ListExpenses;
@@ -9,6 +11,7 @@ use App\Models\Client;
 use App\Models\Expense;
 use App\Models\Project;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -226,4 +229,44 @@ test('unbilled expense can be edited and deleted, deleting removes the receipt',
 
     expect(Expense::count())->toBe(0);
     Storage::disk('local')->assertMissing('receipts/a.pdf');
+});
+
+test('an expense referenced by a released invoice line cannot be deleted and never raises a 500', function () {
+    $client = Client::factory()->create();
+    $expense = Expense::factory()->for($client)->create();
+    $service = app(InvoiceService::class);
+    $invoice = $service->createDraft($client);
+    $service->addExpense($invoice, $expense);
+    $service->markSent($invoice, CarbonImmutable::today());
+    $service->cancel($invoice, CarbonImmutable::today());
+    $expense->refresh();
+
+    expect($expense->isBilled())->toBeFalse()
+        ->and($expense->canBeDeleted())->toBeFalse()
+        ->and(fn () => $expense->delete())->toThrow(DomainException::class)
+        ->and(ExpenseResource::canDelete($expense))->toBeFalse();
+
+    Livewire::test(EditExpense::class, ['record' => $expense->getKey()])
+        ->assertActionHidden('delete');
+    Livewire::test(ListExpenses::class)
+        ->assertActionHidden(TestAction::make('delete')->table($expense));
+    expect(Expense::whereKey($expense->id)->exists())->toBeTrue();
+});
+
+test('an unreferenced expense can be deleted', function () {
+    expect(Expense::factory()->create()->canBeDeleted())->toBeTrue();
+});
+
+test('billed amount follows a corrected cost unless it was explicitly different', function () {
+    $followed = Expense::factory()->create(['cost_cents' => 1000, 'billed_amount_cents' => 1000]);
+    $followed->update(['cost_cents' => 1200]);
+    expect($followed->fresh()->billed_amount_cents)->toBe(1200);
+
+    $marked = Expense::factory()->create(['cost_cents' => 1000, 'billed_amount_cents' => 1500]);
+    $marked->update(['cost_cents' => 1200]);
+    expect($marked->fresh()->billed_amount_cents)->toBe(1500);
+
+    $explicit = Expense::factory()->create(['cost_cents' => 1000, 'billed_amount_cents' => 1000]);
+    $explicit->update(['cost_cents' => 1200, 'billed_amount_cents' => 1100]);
+    expect($explicit->fresh()->billed_amount_cents)->toBe(1100);
 });

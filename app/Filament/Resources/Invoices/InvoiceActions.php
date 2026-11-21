@@ -71,7 +71,7 @@ class InvoiceActions
             ->icon(Heroicon::OutlinedBanknotes)
             ->visible(fn (Invoice $record): bool => $record->status === InvoiceStatus::Sent)
             ->schema([
-                DatePicker::make('paid_on')->label('Payment date')->default(fn () => today())->required(),
+                DatePicker::make('paid_on')->label('Payment date')->default(fn () => today())->maxDate(fn () => today())->required(),
             ])
             ->action(fn (Invoice $record, array $data) => static::run(
                 fn (InvoiceService $invoices) => $invoices->markPaid($record, CarbonImmutable::parse($data['paid_on'])),

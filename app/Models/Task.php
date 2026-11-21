@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\TaskStatus;
 use Database\Factories\TaskFactory;
+use DomainException;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,6 +23,15 @@ class Task extends Model
     protected function casts(): array
     {
         return ['status' => TaskStatus::class];
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (Task $task): void {
+            if ($task->getOriginal('status') === TaskStatus::Billed && $task->isDirty('project_id')) {
+                throw new DomainException('A billed task cannot be moved to another project.');
+            }
+        });
     }
 
     public function project(): BelongsTo

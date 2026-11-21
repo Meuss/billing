@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Expenses\Pages;
 
 use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\Expenses\Tables\ExpensesTable;
+use App\Models\Expense;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
@@ -17,7 +18,7 @@ class EditExpense extends EditRecord
         return [
             ViewAction::make(),
             ExpensesTable::duplicateAction(),
-            DeleteAction::make(),
+            DeleteAction::make()->hidden(fn (Expense $record): bool => ! $record->canBeDeleted()),
         ];
     }
 }
