@@ -16,6 +16,12 @@ class ProjectsRelationManager extends RelationManager
 
     protected static ?string $relatedResource = ProjectResource::class;
 
+    // Relation managers are read-only on View pages by default; these are meant to be worked in.
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
+
     public function form(Schema $schema): Schema
     {
         return ProjectForm::configure($schema, withClient: false);
@@ -24,6 +30,8 @@ class ProjectsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return ProjectsTable::configure($table, withClient: false)
-            ->headerActions([CreateAction::make()]);
+            ->headerActions([
+                CreateAction::make()->hidden(fn (): bool => $this->getOwnerRecord()->isArchived()),
+            ]);
     }
 }
