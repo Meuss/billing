@@ -1,0 +1,3 @@
+# dompdf for invoice PDFs, designed for shared hosting
+
+The app will run on Infomaniak shared hosting (deployed via GitHub Actions), where no headless Chrome and no long-running queue workers are available. We therefore render invoice PDFs with dompdf (pure PHP) rather than a Chrome-based renderer like Browsershot, accepting a more limited CSS subset (no flexbox/grid; table-based layout) in exchange for zero server dependencies. The brand fonts (Schibsted Grotesk, DM Mono) are embedded from TTF files. All work, including PDF generation, runs synchronously in the request; front-end assets are built in CI, never on the server.
