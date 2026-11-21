@@ -12,9 +12,11 @@ Personal freelance billing tool replacing Invoice Ninja. Single user (Thomas Mil
   - Invoiced as a whole. Adding to an Invoice → `billed`. Removed from a draft / Invoice deleted / Invoice cancelled → `done`.
   - Any non-billed Task can be added to an Invoice.
   - A billed Task takes no new Time Entries. While its Invoice is a draft its existing Time Entries stay editable (line totals follow live). Once sent: fully locked.
-- **Time Entry**: belongs to a Task; start (date+time), end (date+time), duration, description (required).
-  - Enter start + duration → end computed; enter start + end → duration computed.
-  - Duration rounded **up** to 15-minute steps on save (minimum 15). End is then start + rounded duration.
+- **Time Entry**: belongs to a Task; start (date+time), end (date+time), duration, description (optional).
+  - Only the duration is required, picked from a select of 15-minute steps (`00:15`, `00:30`, … `12:00`).
+  - Picking a duration fills the rest: end = now rounded **down** to 5 minutes (never in the future), start = end − duration. E.g. at 23:17, `00:30` → today 22:45–23:15. All fields stay editable.
+  - Changing the duration moves the start (end stays); changing the start moves the end (duration stays); changing the end recomputes the duration, rounded **up** to 15-minute steps (minimum 15), and the end follows.
+  - Start and end times are always on 5-minute marks (rounded down). Billed duration stays in 15-minute steps; end = start + duration.
   - Manual entry only (no timer).
 - **Expense**: belongs to a Client, optionally one of its Projects; date, supplier, description, cost (CHF), billed amount (CHF, defaults to cost), original-amount note (optional free text, e.g. "USD 99.00"), receipt file (optional, private). Status `unbilled` | `billed`; same release rules as Tasks. "Duplicate" action. Only costs that are re-billed.
 

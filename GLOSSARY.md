@@ -27,7 +27,7 @@ _Avoid_: Job, ticket
 A Task that has been put on an Invoice. It takes no further Time Entries; further work goes in a new Task. Leaving the Invoice returns it to done.
 
 **Time Entry**:
-One period of work on a Task, with a start, an end and a description. Its duration is in 15-minute steps.
+One period of work on a Task, with a start and an end on 5-minute marks and an optional description. Its duration is in 15-minute steps.
 _Avoid_: Hours, log, timesheet row
 
 **Default Rate**:
