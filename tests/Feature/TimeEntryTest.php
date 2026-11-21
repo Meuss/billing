@@ -226,3 +226,32 @@ test('editing and deleting entries through the relation manager respects the gua
     $manager()->callAction(TestAction::make('delete')->table($entry))->assertNotified();
     expect($entry->fresh())->not->toBeNull();
 });
+
+test('moving an entry off a billed task is refused', function () {
+    $billed = Task::factory()->create();
+    $entry = TimeEntry::fromStartAndDuration($billed, at('09:00'), 30, 'One');
+    $entry->save();
+    $billed->update(['status' => TaskStatus::Billed]);
+    $open = Task::factory()->create();
+
+    expect(fn () => $entry->fresh()->update(['task_id' => $open->id]))->toThrow(DomainException::class);
+    expect($entry->fresh()->task_id)->toBe($billed->id);
+});
+
+test('end date defaults to the start date when omitted', function () {
+    $task = Task::factory()->create();
+
+    Livewire::test(TimeEntriesRelationManager::class, ['ownerRecord' => $task, 'pageClass' => ViewTask::class])
+        ->callAction(TestAction::make('create')->table(), [
+            'started_on' => '2026-01-05',
+            'started_time' => '09:00',
+            'use_end_time' => true,
+            'ended_on' => null,
+            'ended_time' => '10:30',
+            'description' => 'Past work',
+        ])
+        ->assertHasNoFormErrors();
+
+    $entry = $task->timeEntries()->sole();
+    expect($entry->ended_at->toDateTimeString())->toBe('2026-01-05 10:30:00')->and($entry->duration_minutes)->toBe(90);
+});

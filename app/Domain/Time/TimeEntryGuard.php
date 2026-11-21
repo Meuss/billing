@@ -18,7 +18,10 @@ class TimeEntryGuard
 
     public static function assertCanEdit(TimeEntry $entry): void
     {
-        if ($entry->task->status === TaskStatus::Billed) {
+        // Fresh lookup by the ORIGINAL task: a pending task_id change must not hide a billed source Task.
+        $task = Task::findOrFail($entry->getOriginal('task_id') ?? $entry->task_id);
+
+        if ($task->status === TaskStatus::Billed) {
             throw new DomainException('This Task is billed; its Time Entries can no longer be changed.');
         }
     }

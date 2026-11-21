@@ -49,15 +49,14 @@ class TimeEntriesRelationManager extends RelationManager
                 ->visible(fn (Get $get): bool => ! $get('use_end_time'))
                 ->required(fn (Get $get): bool => ! $get('use_end_time')),
             DatePicker::make('ended_on')->label('End date')
-                ->default(now())
-                ->visible(fn (Get $get): bool => (bool) $get('use_end_time'))
-                ->required(fn (Get $get): bool => (bool) $get('use_end_time')),
+                ->helperText('Leave blank to end on the start date.')
+                ->visible(fn (Get $get): bool => (bool) $get('use_end_time')),
             TimePicker::make('ended_time')->label('End time')->seconds(false)
                 ->visible(fn (Get $get): bool => (bool) $get('use_end_time'))
                 ->required(fn (Get $get): bool => (bool) $get('use_end_time'))
                 ->rule(fn (Get $get): \Closure => function (string $attribute, mixed $value, \Closure $fail) use ($get): void {
                     $start = self::combine($get('started_on'), $get('started_time'));
-                    $end = self::combine($get('ended_on'), $value);
+                    $end = self::combine($get('ended_on') ?: $get('started_on'), $value);
 
                     if ($start && $end && $end->lessThanOrEqualTo($start)) {
                         $fail('The end must be after the start.');
@@ -132,8 +131,8 @@ class TimeEntriesRelationManager extends RelationManager
     {
         $start = self::combine($data['started_on'], $data['started_time']);
 
-        if (filled($data['ended_time'] ?? null) && filled($data['ended_on'] ?? null)) {
-            return TimeEntry::fromStartAndEnd($task, $start, self::combine($data['ended_on'], $data['ended_time']), $data['description']);
+        if (filled($data['ended_time'] ?? null)) {
+            return TimeEntry::fromStartAndEnd($task, $start, self::combine(($data['ended_on'] ?? null) ?: $data['started_on'], $data['ended_time']), $data['description']);
         }
 
         return TimeEntry::fromStartAndDuration($task, $start, (int) $data['duration'], $data['description']);
