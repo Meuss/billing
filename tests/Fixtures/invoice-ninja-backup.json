@@ -1,0 +1,25 @@
+{
+  "clients": [
+    {"hashed_id": "CLfr0001aa", "name": "Acme SA", "address1": "Rue de Test 1", "address2": "Etage 2", "postal_code": "1000", "city": "Lausanne", "country_id": "250", "phone": "+41 21 000 00 00", "website": "https://acme.example.ch", "private_notes": "Synthetic note", "is_deleted": false, "deleted_at": null, "settings": {"language_id": "4", "currency_id": "17"}},
+    {"hashed_id": "CLnull002b", "name": "Beta Sarl", "address1": "Chemin Fictif 2", "address2": "", "postal_code": "1200", "city": "Geneve", "country_id": "756", "phone": "", "website": "", "private_notes": "", "is_deleted": false, "deleted_at": null, "settings": {"language_id": null, "currency_id": "17"}},
+    {"hashed_id": "CLen0003cc", "name": "Gamma Ltd", "address1": "Test Street 3", "address2": null, "postal_code": "8000", "city": "Zurich", "country_id": "276", "phone": "+41 44 000 00 00", "website": "", "private_notes": "", "is_deleted": false, "deleted_at": null, "settings": {"language_id": "1", "currency_id": "1"}},
+    {"hashed_id": "CLdel004dd", "name": "Deleted Co", "address1": "Nowhere 4", "address2": "", "postal_code": "3000", "city": "Berne", "country_id": "756", "phone": "", "website": "", "private_notes": "", "is_deleted": true, "deleted_at": "2024-01-01 00:00:00", "settings": {"language_id": null, "currency_id": "1"}},
+    {"hashed_id": "CLmiss005e", "name": "Incomplete SA", "address1": "", "address2": "", "postal_code": "", "city": "", "country_id": "999", "phone": "", "website": "", "private_notes": "", "is_deleted": false, "deleted_at": null, "settings": {"language_id": "40", "currency_id": "17"}}
+  ],
+  "client_contacts": [
+    {"client_id": "CLfr0001aa", "is_primary": 0, "first_name": "Secondary", "last_name": "Person", "email": "second@example.ch", "phone": "+41 79 111 11 11"},
+    {"client_id": "CLfr0001aa", "is_primary": 1, "first_name": "Alice", "last_name": "Martin", "email": "alice@example.ch", "phone": "+41 79 000 00 00"},
+    {"client_id": "CLnull002b", "is_primary": 1, "first_name": "", "last_name": "", "email": "contact@example.ch", "phone": ""},
+    {"client_id": "CLen0003cc", "is_primary": 1, "first_name": "Bob", "last_name": "", "email": "bob@example.ch", "phone": ""},
+    {"client_id": "CLdel004dd", "is_primary": 1, "first_name": "Gone", "last_name": "Away", "email": "gone@example.ch", "phone": ""},
+    {"client_id": "CLmiss005e", "is_primary": 1, "first_name": "Carl", "last_name": "Dupont", "email": "", "phone": ""}
+  ],
+  "projects": [
+    {"hashed_id": "PRdef001aa", "client_id": "CLfr0001aa", "name": "Default rate project", "private_notes": "Project note", "task_rate": "120.000000", "is_deleted": 0, "archived_at": null},
+    {"hashed_id": "PRcus002bb", "client_id": "CLfr0001aa", "name": "Custom rate project", "private_notes": "", "task_rate": "100.000000", "is_deleted": 0, "archived_at": null},
+    {"hashed_id": "PRzer003cc", "client_id": "CLnull002b", "name": "Zero rate project", "private_notes": "", "task_rate": "0.000000", "is_deleted": 0, "archived_at": null},
+    {"hashed_id": "PRdel004dd", "client_id": "CLnull002b", "name": "Deleted project", "private_notes": "", "task_rate": "120.000000", "is_deleted": 1, "archived_at": null},
+    {"hashed_id": "PRarc005ee", "client_id": "CLen0003cc", "name": "Archived project", "private_notes": "", "task_rate": "95.500000", "is_deleted": 0, "archived_at": "2025-03-04 10:00:00"},
+    {"hashed_id": "PRorp006ff", "client_id": "CLdel004dd", "name": "Orphan of deleted client", "private_notes": "", "task_rate": "120.000000", "is_deleted": 0, "archived_at": null}
+  ]
+}
