@@ -42,7 +42,7 @@ class ManageBillingSettings extends SettingsPage
                 TextInput::make('sender_website')->maxLength(255),
                 TextInput::make('sender_iban')
                     ->label('IBAN')
-                    ->helperText('Swiss or Liechtenstein IBAN. Spaces are removed on save.')
+                    ->helperText('Swiss IBAN. Spaces are removed on save.')
                     ->maxLength(40)
                     ->rule(fn (): Closure => static::ibanRule()),
                 Textarea::make('footer_text')->label('Invoice footer text')->columnSpanFull(),
@@ -103,7 +103,7 @@ class ManageBillingSettings extends SettingsPage
     {
         $iban = static::normaliseIban($iban);
 
-        if (! preg_match('/^(CH|LI)\d{2}[0-9A-Z]{17}$/', $iban)) {
+        if (! preg_match('/^CH\d{2}[0-9A-Z]{17}$/', $iban)) {
             return false;
         }
 
@@ -125,7 +125,7 @@ class ManageBillingSettings extends SettingsPage
     {
         return function (string $attribute, mixed $value, Closure $fail): void {
             if (filled($value) && ! static::isValidSwissIban((string) $value)) {
-                $fail('Enter a valid Swiss or Liechtenstein IBAN.');
+                $fail('Enter a valid Swiss IBAN.');
             }
         };
     }

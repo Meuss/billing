@@ -90,15 +90,5 @@ test('invalid IBANs are rejected', function (string $iban) {
     'too short' => 'CH00 123',
     'bad checksum' => 'CH9400762011623852957',
     'foreign country' => 'DE89 3704 0044 0532 0130 00',
+    'non-Swiss IBAN with valid checksum' => 'LI21 0881 0000 2324 013A A',
 ]);
-
-test('LI IBAN is accepted', function () {
-    actingAs(User::factory()->withMfa()->create());
-
-    Livewire::test(ManageBillingSettings::class)
-        ->fillForm(['sender_iban' => 'LI21 0881 0000 2324 013A A'])
-        ->call('save')
-        ->assertHasNoFormErrors();
-
-    expect(app(BillingSettings::class)->sender_iban)->toBe('LI21088100002324013AA');
-});
