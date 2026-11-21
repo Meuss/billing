@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Projects\Tables;
 
 use App\Filament\Support\ArchiveActions;
+use App\Filament\Support\GuardedDeleteAction;
 use App\Support\Chf;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -28,6 +29,8 @@ class ProjectsTable
                 ViewAction::make(),
                 EditAction::make(),
                 ...ArchiveActions::make(),
+                GuardedDeleteAction::make('its tasks and time entries'),
+                GuardedDeleteAction::make('its tasks and time entries'),
             ]);
     }
 }

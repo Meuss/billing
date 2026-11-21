@@ -4,15 +4,22 @@ namespace App\Support;
 
 class Chf
 {
+    /** "12.50" → 1250, "-0.5" → -50. */
     public static function toCents(string $chf): int
     {
-        [$whole, $fraction] = array_pad(explode('.', trim($chf), 2), 2, '');
+        $chf = trim($chf);
+        $negative = str_starts_with($chf, '-');
+        [$whole, $fraction] = array_pad(explode('.', ltrim($chf, '-+'), 2), 2, '');
+        $cents = ((int) $whole) * 100 + (int) str_pad($fraction, 2, '0');
 
-        return ((int) $whole) * 100 + (int) str_pad($fraction, 2, '0');
+        return $negative ? -$cents : $cents;
     }
 
+    /** 1250 → "12.50", -50 → "-0.50". */
     public static function fromCents(int $cents): string
     {
-        return intdiv($cents, 100).'.'.str_pad((string) ($cents % 100), 2, '0', STR_PAD_LEFT);
+        $abs = abs($cents);
+
+        return ($cents < 0 ? '-' : '').intdiv($abs, 100).'.'.str_pad((string) ($abs % 100), 2, '0', STR_PAD_LEFT);
     }
 }

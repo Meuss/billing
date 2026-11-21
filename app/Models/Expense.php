@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['client_id', 'project_id', 'date', 'supplier', 'description', 'cost_cents', 'billed_amount_cents', 'original_amount_note', 'receipt_path', 'status'])]
@@ -74,6 +75,12 @@ class Expense extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /** The Invoice Line currently holding this Expense (lines of cancelled invoices are released). */
+    public function invoiceLine(): HasOne
+    {
+        return $this->hasOne(InvoiceLine::class)->where('released', false);
     }
 
     public function isBilled(): bool

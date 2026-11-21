@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['project_id', 'name', 'description', 'status'])]
 class Task extends Model
@@ -33,8 +34,18 @@ class Task extends Model
         return $this->hasMany(TimeEntry::class);
     }
 
+    /** The Invoice Line currently holding this Task (lines of cancelled invoices are released). */
+    public function invoiceLine(): HasOne
+    {
+        return $this->hasOne(InvoiceLine::class)->where('released', false);
+    }
+
     public function totalMinutes(): int
     {
+        if ($this->relationLoaded('timeEntries')) {
+            return (int) $this->timeEntries->sum('duration_minutes');
+        }
+
         return (int) $this->timeEntries()->sum('duration_minutes');
     }
 }

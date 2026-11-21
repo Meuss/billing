@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Invoicing\InvoiceService;
 use App\Filament\Resources\Clients\ClientResource;
 use App\Filament\Resources\Clients\Pages\EditClient;
 use App\Filament\Resources\Clients\Pages\ListClients;
@@ -11,6 +12,7 @@ use App\Filament\Resources\Projects\Pages\ListProjects;
 use App\Filament\Resources\Projects\Pages\ViewProject;
 use App\Models\Client;
 use App\Models\Project;
+use App\Models\Task;
 use App\Models\User;
 use App\Settings\BillingSettings;
 use Filament\Actions\Testing\TestAction;
@@ -141,4 +143,44 @@ test('archive and unarchive header actions work on record pages', function () {
             ->callAction('unarchive');
         expect($record->fresh()->isArchived())->toBeFalse();
     }
+});
+
+test('delete actions show only while nothing invoiced references the record', function () {
+    $client = Client::factory()->create();
+    $project = Project::factory()->for($client)->create();
+    $billedProject = Project::factory()->for($client)->create();
+    $task = Task::factory()->for($billedProject)->create();
+
+    Livewire::test(ListProjects::class)
+        ->assertActionVisible(TestAction::make('delete')->table($billedProject));
+    Livewire::test(ListClients::class)->assertActionVisible(TestAction::make('delete')->table($client));
+
+    $service = app(InvoiceService::class);
+    $service->addTask($service->createDraft($client), $task);
+
+    Livewire::test(ListClients::class)->assertActionHidden(TestAction::make('delete')->table($client));
+    Livewire::test(ListProjects::class)
+        ->assertActionHidden(TestAction::make('delete')->table($billedProject))
+        ->assertActionVisible(TestAction::make('delete')->table($project));
+    Livewire::test(ViewClient::class, ['record' => $client->id])->assertActionHidden('delete');
+    Livewire::test(EditClient::class, ['record' => $client->id])->assertActionHidden('delete');
+    Livewire::test(ViewProject::class, ['record' => $billedProject->id])->assertActionHidden('delete');
+    Livewire::test(EditProject::class, ['record' => $billedProject->id])->assertActionHidden('delete');
+
+    Livewire::test(ListProjects::class)->callAction(TestAction::make('delete')->table($project));
+    expect($project->fresh())->toBeNull();
+});
+
+test('delete header actions remove an uninvoiced client and project', function () {
+    $project = Project::factory()->create();
+    Livewire::test(ViewProject::class, ['record' => $project->id])->callAction('delete');
+    expect($project->fresh())->toBeNull();
+
+    $client = Client::factory()->create();
+    Livewire::test(EditClient::class, ['record' => $client->id])->callAction('delete');
+    expect($client->fresh())->toBeNull();
+
+    $client = Client::factory()->create();
+    Livewire::test(ListClients::class)->callAction(TestAction::make('delete')->table($client));
+    expect($client->fresh())->toBeNull();
 });

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\Archivable;
 use App\Settings\BillingSettings;
 use Database\Factories\ProjectFactory;
+use DomainException;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,6 +24,16 @@ class Project extends Model
         return ['rate_cents' => 'integer'];
     }
 
+    protected static function booted(): void
+    {
+        // Tasks and Time Entries go by FK cascade; Expenses keep their Client and lose the Project.
+        static::deleting(function (Project $project): void {
+            if (! $project->canBeDeleted()) {
+                throw new DomainException('A project with invoiced work cannot be deleted; archive it instead.');
+            }
+        });
+    }
+
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
@@ -37,6 +48,20 @@ class Project extends Model
     public function scopeSelectable(Builder $query): void
     {
         $query->active()->whereHas('client', fn (Builder $client) => $client->active());
+    }
+
+    /** False once any Invoice Line references it or one of its Tasks. */
+    public function canBeDeleted(): bool
+    {
+        if (! $this->exists) {
+            return false;
+        }
+
+        return ! InvoiceLine::query()
+            ->where(fn (Builder $lines) => $lines
+                ->where('project_id', $this->getKey())
+                ->orWhereIn('task_id', $this->tasks()->select('id')))
+            ->exists();
     }
 
     public function effectiveRateCents(): int

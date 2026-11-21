@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Clients\Tables;
 
 use App\Filament\Support\ArchiveActions;
+use App\Filament\Support\GuardedDeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -27,6 +28,8 @@ class ClientsTable
                 ViewAction::make(),
                 EditAction::make(),
                 ...ArchiveActions::make(),
+                GuardedDeleteAction::make('its projects, tasks, time entries and expenses'),
+                GuardedDeleteAction::make('its projects, tasks, time entries and expenses'),
             ]);
     }
 }
